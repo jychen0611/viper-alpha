@@ -1,4 +1,4 @@
 # viper
 A virtual ethernet driver in linux.
 
-![alt text](viper.png)
+<img src="viper.png" width="20%"/>
