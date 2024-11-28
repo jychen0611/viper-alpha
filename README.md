@@ -1,5 +1,4 @@
-# viper
-A virtual ether-switch in linux.
+# viper: A Virtual Ether-Switch for Linux.
 
 <img src="viper.png" width="20%"/>
 
