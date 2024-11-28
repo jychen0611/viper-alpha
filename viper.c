@@ -1,11 +1,11 @@
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/version.h>
-#include <linux/init.h>
-#include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/if_ether.h>
 #include <linux/if_vlan.h>
+#include <linux/init.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/netdevice.h>
+#include <linux/version.h>
 
 static struct net_device *veth0, *veth1;
 static struct net_device_stats veth_stats0, veth_stats1;
@@ -15,20 +15,23 @@ static struct net_device_stats veth_stats0, veth_stats1;
 static struct {
     unsigned char mac[ETH_ALEN];
     struct net_device *dev;
-    u16 vlan_id; // VLAN ID associated with the entry
+    u16 vlan_id;  // VLAN ID associated with the entry
 } fdb[FDB_SIZE];
 
 static int fdb_lookup(const unsigned char *mac, u16 vlan_id)
 {
     for (int i = 0; i < FDB_SIZE; i++) {
-        if (fdb[i].dev && memcmp(fdb[i].mac, mac, ETH_ALEN) == 0 && fdb[i].vlan_id == vlan_id) {
+        if (fdb[i].dev && memcmp(fdb[i].mac, mac, ETH_ALEN) == 0 &&
+            fdb[i].vlan_id == vlan_id) {
             return i;
         }
     }
     return -1;
 }
 
-static void fdb_add(const unsigned char *mac, struct net_device *dev, u16 vlan_id)
+static void fdb_add(const unsigned char *mac,
+                    struct net_device *dev,
+                    u16 vlan_id)
 {
     int i;
     for (i = 0; i < FDB_SIZE; i++) {
@@ -60,13 +63,12 @@ static int veth_rx(struct sk_buff *skb, struct net_device *dev)
     }
 
     /*if (!out_dev) {
-        printk(KERN_WARNING "viper: MAC address not found in FDB for VLAN %u, dropping packet.\n", vlan_id);
-        dev_kfree_skb(skb);
-        return NET_RX_DROP;
+        printk(KERN_WARNING "viper: MAC address not found in FDB for VLAN %u,
+    dropping packet.\n", vlan_id); dev_kfree_skb(skb); return NET_RX_DROP;
     }*/
 
     // Forward the packet to the correct device
-    //skb->dev = out_dev;
+    // skb->dev = out_dev;
     skb->dev = dev;
     skb->protocol = eth_type_trans(skb, dev);
     skb->ip_summed = CHECKSUM_UNNECESSARY; /* don't check it */
@@ -99,7 +101,7 @@ static netdev_tx_t veth_start_xmit(struct sk_buff *skb, struct net_device *dev)
     }
     veth_rx(skb, skb->dev);
     return 0;
-    //return dev_queue_xmit(skb);
+    // return dev_queue_xmit(skb);
 }
 
 /* Open NIC */
@@ -124,7 +126,8 @@ static const struct net_device_ops veth_netdev_ops = {
     .ndo_start_xmit = veth_start_xmit,
     .ndo_open = viper_eth_open,
     .ndo_stop = viper_eth_stop,
-    .ndo_get_stats = NULL, // For simplicity, not implementing stats gathering here
+    .ndo_get_stats =
+        NULL,  // For simplicity, not implementing stats gathering here
 };
 
 // Initialize virtual Ethernet devices with VLAN support
@@ -153,7 +156,8 @@ static int __init veth_switch_init(void)
         return -ENODEV;
     }
 
-    printk(KERN_INFO "viper: Virtual Ethernet switch driver with VLAN support loaded\n");
+    printk(KERN_INFO
+           "viper: Virtual Ethernet switch driver with VLAN support loaded\n");
     return 0;
 }
 
@@ -173,4 +177,4 @@ module_exit(veth_switch_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Elian");
-MODULE_DESCRIPTION("Virtual Ethernet Switch Driver with VLAN Support");
+MODULE_DESCRIPTION("Virtual Ethernet Switch Driver");
