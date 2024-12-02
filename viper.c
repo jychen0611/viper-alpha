@@ -30,82 +30,140 @@ struct viper_content {
     struct list_head port_list;
     /* Point to the list which contain all PC interface */
     struct list_head pc_list;
+    /* Point to forwarding table */
+    struct list_head fd_list;
 };
-/* Port interface pointed to by netdev_priv() */
-struct port_if {
-    /* Point to the net device */
-    struct net_device *ndev;
-    struct net_device_stats stats;
-    /* ID */
-    u32 port_id;
-    /* Link from viper_content */
-    struct list_head port_list;
-};
-/* PC interface pointed to by netdev_priv() */
-struct pc_if {
+
+enum viper_type {PORT, PC};
+/* Port/PC interface pointed to by netdev_priv() */
+struct viper_if {
     /* Point to the net device */
     struct net_device *ndev;
     struct net_device_stats stats;
     /* Port ID */
     u32 port_id;
+    /* RX queue */
+    struct list_head rx_list;
+    /* Interface type */
+    enum viper_type type;
+    union{
+        /* Port interface */
+        struct{
+            /* Link from viper_content */
+            struct list_head port_list;
+        };
+        /* PC interface */
+        struct{
+            /* Link from viper_content */
+            struct list_head pc_list;
+        };
+    };
+};
+
+/* Used for rx_queue */
+struct viper_rx_pkt {
+    int datalen;
+    u8 data[ETH_DATA_LEN];
+    struct list_head rx_list;
+};
+
+struct forward_table {
+    /* MAC address */
+    char mac[ETH_ALEN];
+    /* Port ID */
+    int port_id;
+    /* Time */
+    struct timespec64 time;
     /* Link from viper_content */
-    struct list_head pc_list;
+    struct list_head fd_list;
 };
 
 static struct viper_content *viper = NULL;
 
-/* Retrieve port interface from net device */
-static inline struct port_if *ndev_get_viper_pif(struct net_device *ndev)
+/* Retrieve viper interface from net device */
+static inline struct viper_if *ndev_get_viper_if(struct net_device *ndev)
 {
     /* Port interface pointed to by netdev_priv() */
-    return (struct port_if *) netdev_priv(ndev);
-}
-/* Retrieve PC interface from net device */
-static inline struct pc_if *ndev_get_viper_pcif(struct net_device *ndev)
-{
-    /* Port interface pointed to by netdev_priv() */
-    return (struct pc_if *) netdev_priv(ndev);
+    return (struct viper_if *) netdev_priv(ndev);
 }
 
-
-// The packet reception function (switching logic with VLAN support)
-static int viper_rx(struct sk_buff *skb, struct net_device *dev)
+/* Insert forwarding table */
+static inline void fd_insert(char *mac, int id, struct timespec64 t)
 {
+    struct forward_table *fd =
+        kmalloc(sizeof(struct forward_table), GFP_KERNEL);
+    memcpy(fd->mac, mac, ETH_ALEN);
+    fd->port_id = id;
+    fd->time.tv_sec = t.tv_sec;
+    fd->time.tv_nsec = t.tv_nsec;
+    list_add_tail(&fd->fd_list, &viper->fd_list);
+}
+
+/* The packet reception function */
+static int viper_rx(struct sk_buff *skb, struct net_device *dev, bool from_port)
+{
+    unsigned char *src_addr = eth_hdr(skb)->h_source;
+    unsigned char *dst_addr = eth_hdr(skb)->h_dest;
+    if(ndev_get_viper_if(dev)->type == PORT){
+        if(!from_port){
+            struct timespec64 t;
+            ktime_get_real_ts64(&t);
+            fd_insert(src_addr, ndev_get_viper_if(dev)->port_id, t); 
+        }else{
+
+        }
+    }else if(ndev_get_viper_if(dev)->type == PC){
+
+    }
+
     /* FIXME: Forward the packet to the correct device */
-    skb->dev = dev;
+/*    skb->dev = dev;
     skb->protocol = eth_type_trans(skb, dev);
-    skb->ip_summed = CHECKSUM_UNNECESSARY; /* don't check it */
+    skb->ip_summed = CHECKSUM_UNNECESSARY; *//* don't check it */
+/*
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
     return netif_rx_ni(skb);
 #else
     return netif_rx(skb);
 #endif
+*/
+    return 0;
     /* FIXME: free skb (kfree_skb(skb);)*/
 }
 
-// The packet transmission function (transmitting logic with VLAN support)
+/* The packet transmission function */
 static netdev_tx_t viper_start_xmit(struct sk_buff *skb, struct net_device *dev)
 {
     unsigned char *src_addr = eth_hdr(skb)->h_source;
     unsigned char *dst_addr = eth_hdr(skb)->h_dest;
     pr_info("viper: Transmission from %pM to %pM\n", dev->dev_addr, dst_addr);
 
-    struct port_if *dest = NULL;
-    /*
+    struct viper_if *cur = ndev_get_viper_if(dev);
+    struct viper_if *dest = NULL;
+    if(cur->type == PORT){
+
+    }else if(cur->type == PC){
         if (is_broadcast_ether_addr(dst_addr)) {
-            list_for_each_entry (dest, &viper->port_list, port_list) {
-                if (!ether_addr_equal(dest->ndev->dev_addr, src_addr)) {
-                    viper_rx(skb, dest->ndev);
+        
+        }else{
+            bool same_port = false;
+            list_for_each_entry (dest, &viper->pc_list, pc_list) {
+                if (dest->port_id == cur->port_id && ether_addr_equal(dest->ndev->dev_addr, dst_addr)) {
+                    viper_rx(skb, dest->ndev, false);
+                    same_port = true;
+                    break;
                 }
             }
-        } else {
-            list_for_each_entry (dest, &viper->port_list, port_list) {
-                if (ether_addr_equal(dest->ndev->dev_addr, dst_addr)) {
-                    viper_rx(skb, dest->ndev);
+            if(!same_port){
+                list_for_each_entry (dest, &viper->port_list, port_list) {
+                    if (dest->port_id == cur->port_id) {
+                        viper_rx(skb, dest->ndev, false);
+                        break;
+                    }
                 }
             }
         }
-    */
+    }   
 
     // viper_rx(skb, skb->dev);
     return 0;
@@ -143,7 +201,7 @@ static int viper_add_port(int idx)
 {
     struct net_device *ndev = NULL;
     /* Allocate net device context */
-    ndev = alloc_netdev(sizeof(struct port_if), PORT_NAME, NET_NAME_ENUM,
+    ndev = alloc_netdev(sizeof(struct viper_if), PORT_NAME, NET_NAME_ENUM,
                         ether_setup);
     if (!ndev) {
         pr_err("viper: Couldn't allocate space for nedv");
@@ -164,9 +222,12 @@ static int viper_add_port(int idx)
     }
 
     /* Fulfill the port interface */
-    struct port_if *pif = ndev_get_viper_pif(ndev);
+    struct viper_if *pif = ndev_get_viper_if(ndev);
     pif->ndev = ndev;
     pif->port_id = port_id++;
+    pif->type = PORT;
+    /* Initialize rx_queue */
+    INIT_LIST_HEAD(&pif->rx_list);
     list_add_tail(&pif->port_list, &viper->port_list);
     pr_info("viper: New PORT %d\n", pif->port_id);
     return 0;
@@ -178,7 +239,7 @@ static int viper_add_pc(int idx)
     struct net_device *ndev = NULL;
     /* Allocate net device context */
     ndev =
-        alloc_netdev(sizeof(struct pc_if), PC_NAME, NET_NAME_ENUM, ether_setup);
+        alloc_netdev(sizeof(struct viper_if), PC_NAME, NET_NAME_ENUM, ether_setup);
     if (!ndev) {
         pr_err("viper: Couldn't allocate space for nedv");
         return -ENOMEM;
@@ -215,10 +276,13 @@ static int viper_add_pc(int idx)
     }
 
     /* Fulfill the port interface */
-    struct pc_if *pcif = ndev_get_viper_pcif(ndev);
+    struct viper_if *pcif = ndev_get_viper_if(ndev);
     pcif->ndev = ndev;
     if (num_port != 0)
         pcif->port_id = idx % num_port;
+    pcif->type = PC;
+    /* Initialize rx_queue */
+    INIT_LIST_HEAD(&pcif->rx_list);
     list_add_tail(&pcif->pc_list, &viper->pc_list);
     pr_info("viper: New PC%d which belongs to PORT%d\n", idx, pcif->port_id);
     return 0;
@@ -243,7 +307,7 @@ static int __init viper_switch_init(void)
     for (int i = 0; i < num_pc; ++i) {
         viper_add_pc(i);
     }
-
+    INIT_LIST_HEAD(&viper->fd_list);
 
     pr_info("viper: Virtual Ethernet switch driver loaded\n");
     return 0;
@@ -252,15 +316,31 @@ static int __init viper_switch_init(void)
 /* Exit viper */
 static void __exit viper_switch_exit(void)
 {
-    struct port_if *pif = NULL, *safe1 = NULL;
+    struct viper_if *pif = NULL, *safe1 = NULL;
     list_for_each_entry_safe (pif, safe1, &viper->port_list, port_list) {
+        struct viper_rx_pkt *pkt = NULL, *safe = NULL;
+        list_for_each_entry_safe (pkt, safe, &pif->rx_list, rx_list) {
+            list_del(&pkt->rx_list);
+            kfree(pkt);
+        }
         unregister_netdev(pif->ndev);
         free_netdev(pif->ndev);
     }
-    struct pc_if *pcif = NULL, *safe2 = NULL;
+    struct viper_if *pcif = NULL, *safe2 = NULL;
     list_for_each_entry_safe (pcif, safe2, &viper->pc_list, pc_list) {
+        struct viper_rx_pkt *pkt = NULL, *safe = NULL;
+        list_for_each_entry_safe (pkt, safe, &pcif->rx_list, rx_list) {
+            list_del(&pkt->rx_list);
+            kfree(pkt);
+        }
         unregister_netdev(pcif->ndev);
         free_netdev(pcif->ndev);
+    }
+    struct forward_table *fd = NULL, *safe3 = NULL;
+    list_for_each_entry_safe (fd, safe3, &viper->fd_list, fd_list) {
+        pr_info("viper: | MAC %pM | PORT %d | TIME %lld.%09ld (sec) |\n",
+                fd->mac, fd->port_id, (s64) fd->time.tv_sec, fd->time.tv_nsec);
+        kfree(fd);
     }
     kfree(viper);
 
