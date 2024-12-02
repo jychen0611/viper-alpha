@@ -49,30 +49,30 @@ if [ $return_val -eq 0 ]; then
     sleep 0.5
     sudo ip link
     # create network namespaces for each port
-    #sudo ip netns add ns0
-    #sudo ip netns add ns1
+    sudo ip netns add ns0
+    sudo ip netns add ns1
 
-    #sudo ip link set viper0 netns ns0
-    #sudo ip link set viper1 netns ns1
-    #sudo ip netns exec ns0 ip link set viper0 up
-    #sudo ip netns exec ns1 ip link set viper1 up
+    sudo ip link set viperPC0 netns ns0
+    sudo ip link set viperPC1 netns ns1
+    sudo ip netns exec ns0 ip link set viperPC0 up
+    sudo ip netns exec ns1 ip link set viperPC1 up
 
-    #sudo ip netns exec ns0 ip addr add 10.0.0.1/24 dev viper0
-    #sudo ip netns exec ns1 ip addr add 10.0.0.2/24 dev viper1
+    sudo ip netns exec ns0 ip addr add 10.0.0.1/24 dev viperPC0
+    sudo ip netns exec ns1 ip addr add 10.0.0.2/24 dev viperPC1
 
     echo
     echo "================================================================================"
-    echo "Ping Test: Port0 viper0 (10.0.0.1) <--> Port1 viper1 (10.0.0.2)"
+    echo "Ping Test: Port0 viperPC0 (10.0.0.1) <--> PORT1 viperPC1 (10.0.0.2)"
     echo
     echo "(should succeed)"
     echo "(be patient, it will take some time to route...)"
     echo "================================================================================"
-    #sudo ip netns exec ns0 ping -c 1 10.0.0.2
+    sudo ip netns exec ns0 ping -c 1 10.0.0.2
 fi
 
 remove_kmod viper
-#sudo ip netns del ns0
-#sudo ip netns del ns1
+sudo ip netns del ns0
+sudo ip netns del ns1
 
 if [ $return_val -eq 0 ]; then
     echo "Test Passed"

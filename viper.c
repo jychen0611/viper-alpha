@@ -65,6 +65,8 @@ struct viper_rx_pkt {
     int datalen;
     u8 data[ETH_DATA_LEN];
     struct list_head rx_list;
+    /* Examine the source of packet */
+    bool from_port;
 };
 
 struct forward_table {
@@ -99,36 +101,102 @@ static inline void fd_insert(char *mac, int id, struct timespec64 t)
     list_add_tail(&fd->fd_list, &viper->fd_list);
 }
 
+
+static netdev_tx_t viper_start_xmit(struct sk_buff *skb, struct net_device *dev);
 /* The packet reception function */
-static int viper_rx(struct sk_buff *skb, struct net_device *dev, bool from_port)
+static int viper_rx(struct net_device *dev)
 {
+    struct viper_if *vif = ndev_get_viper_if(dev);
+    if(list_empty(&vif->rx_list)){
+        pr_err("viper: No packet in rx_queue\n");
+        return -1;
+    }
+
+    struct viper_rx_pkt *pkt = list_first_entry(&vif->rx_list, struct viper_rx_pkt, rx_list);
+    
+    /* socket buffer will be sended to protocol stack */
+    struct sk_buff *skb;
+    /* socket buffer will be transmitted to another STA */
+    struct sk_buff *skb1 = NULL;
+    /* Put raw packet into socket buffer */
+    skb = dev_alloc_skb(pkt->datalen + 2);
+    if (!skb) {
+        pr_err("viper: Ran out of memory allocating socket buffer\n");
+        return -ENOMEM;
+    }
+    skb_reserve(skb, 2); /* align IP address on 16B boundary */
+    memcpy(skb_put(skb, pkt->datalen), pkt->data, pkt->datalen);
+    bool from_port = pkt->from_port;
+    list_del(&pkt->rx_list);
+    kfree(pkt);
+    
+
+    
     unsigned char *src_addr = eth_hdr(skb)->h_source;
     unsigned char *dst_addr = eth_hdr(skb)->h_dest;
-    if(ndev_get_viper_if(dev)->type == PORT){
+    if(vif->type == PORT){
+        
         if(!from_port){
             struct timespec64 t;
             ktime_get_real_ts64(&t);
             fd_insert(src_addr, ndev_get_viper_if(dev)->port_id, t); 
-        }else{
-
         }
-    }else if(ndev_get_viper_if(dev)->type == PC){
+        if (is_broadcast_ether_addr(dst_addr)) {
+            pr_info("viper: is_broadcast_ether_addr\n");
+            skb1 = skb_copy(skb, GFP_KERNEL);
+        }
+        /* Receiving a unicast packet */
+        else {
+            /* The packet is not intended for the AP itself. Instead, it is
+             * sent to the destination STA and not passed to the protocol stack.
+             */
+            if (!ether_addr_equal(dst_addr, vif->ndev->dev_addr)) {
+                skb1 = skb;
+                skb = NULL;
+            }
+        }
 
+        if (skb1) {
+            pr_info("viper: %s forward:\n", vif->ndev->name);
+            //vwifi_ndo_start_xmit(skb1, vif->ndev);
+        }
+
+        /* Nothing to pass to protocol stack */
+        if (!skb)
+            return 0;
     }
-
     /* FIXME: Forward the packet to the correct device */
-/*    skb->dev = dev;
+    skb->dev = dev;
     skb->protocol = eth_type_trans(skb, dev);
-    skb->ip_summed = CHECKSUM_UNNECESSARY; *//* don't check it */
-/*
+    skb->ip_summed = CHECKSUM_UNNECESSARY; /* don't check it */
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
     return netif_rx_ni(skb);
 #else
     return netif_rx(skb);
 #endif
-*/
+
     return 0;
     /* FIXME: free skb (kfree_skb(skb);)*/
+}
+
+/* Put packet into destnation interface rx_queue */
+static int viper_xmit(struct sk_buff *skb, struct viper_if *dest, bool from_port)
+{
+    struct viper_rx_pkt *pkt = NULL;
+    pkt = kmalloc(sizeof(struct viper_rx_pkt), GFP_KERNEL);
+    if (!pkt) {
+        pr_warn("Ran out of memory allocating packet pool\n");
+        return -ENOMEM;
+    }
+    memcpy(pkt->data, skb->data, skb->len);
+    pkt->datalen = skb->len;
+    pkt->from_port = from_port;
+    list_add_tail(&pkt->rx_list, &dest->rx_list);
+
+    /* Directly send to rx_queue, simulate the rx interrupt */
+    viper_rx(dest->ndev);
+    return 0;
 }
 
 /* The packet transmission function */
@@ -149,7 +217,7 @@ static netdev_tx_t viper_start_xmit(struct sk_buff *skb, struct net_device *dev)
             bool same_port = false;
             list_for_each_entry (dest, &viper->pc_list, pc_list) {
                 if (dest->port_id == cur->port_id && ether_addr_equal(dest->ndev->dev_addr, dst_addr)) {
-                    viper_rx(skb, dest->ndev, false);
+                    viper_xmit(skb, dest, false);
                     same_port = true;
                     break;
                 }
@@ -157,7 +225,7 @@ static netdev_tx_t viper_start_xmit(struct sk_buff *skb, struct net_device *dev)
             if(!same_port){
                 list_for_each_entry (dest, &viper->port_list, port_list) {
                     if (dest->port_id == cur->port_id) {
-                        viper_rx(skb, dest->ndev, false);
+                        viper_xmit(skb, dest, false);
                         break;
                     }
                 }
