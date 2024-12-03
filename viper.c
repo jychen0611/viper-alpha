@@ -134,6 +134,9 @@ static inline int fd_query(char *mac)
 
 static netdev_tx_t viper_start_xmit(struct sk_buff *skb,
                                     struct net_device *dev);
+static int viper_xmit(struct sk_buff *skb,
+                      struct viper_if *dest,
+                      bool from_port);
 /* The packet reception function */
 static int viper_rx(struct net_device *dev)
 {
