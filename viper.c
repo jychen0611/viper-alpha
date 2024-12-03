@@ -364,8 +364,8 @@ static int viper_add_pc(int idx)
     mac[1] = 0xab;
     mac[2] = 0xcd;
     /* Assign uniqueness MAC address by idx */
-    mac[3] = idx & (0xFF << 16);
-    mac[4] = idx & (0xFF << 8);
+    mac[3] = (idx >> 16) & 0xFF;
+    mac[4] = (idx >> 8) & 0xFF;
     mac[5] = idx & 0xFF;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
     eth_hw_addr_set(ndev, mac);
