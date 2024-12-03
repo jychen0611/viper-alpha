@@ -170,7 +170,7 @@ static int viper_rx(struct net_device *dev)
     list_del(&pkt->rx_list);
     kfree(pkt);
 
-    // char *src_addr = eth_hdr(skb)->h_source;
+    char *src_addr = eth_hdr(skb)->h_source;
     char *dst_addr = eth_hdr(skb)->h_dest;
     if (vif->type == PORT) {
         if (!from_port) {
@@ -178,29 +178,48 @@ static int viper_rx(struct net_device *dev)
             ktime_get_real_ts64(&t);
             fd_insert(eth_hdr(skb)->h_source, ndev_get_viper_if(dev)->port_id,
                       t);
-            pr_info("viper: %s forward:\n", vif->ndev->name);
+            pr_info("viper: %s forward packet\n", vif->ndev->name);
             viper_start_xmit(skb, vif->ndev);
 
         } else {
             int target_port = fd_query(dst_addr);
-            if (target_port != -1 && target_port == vif->port_id) {
+            if (target_port != -1 && target_port != vif->port_id) {
+                /* Drop it */
+                pr_info("viper: %s drop packet\n", vif->ndev->name);
+                kfree_skb(skb);
+            } else {
                 /* Transmit to destination PC */
                 struct viper_if *dest = NULL;
-                list_for_each_entry (dest, &viper->pc_list, pc_list) {
-                    if (ether_addr_equal(dst_addr, dest->ndev->dev_addr)) {
-                        viper_xmit(skb, dest, true);
-                        break;
+                if(is_broadcast_ether_addr(dst_addr)){
+                    list_for_each_entry (dest, &viper->pc_list, pc_list) {
+                        if (!ether_addr_equal(dst_addr, src_addr) && dest->port_id == vif->port_id) {
+                            pr_info("viper: %s tx packet to %s\n", vif->ndev->name, dest->ndev->name);
+                            //viper_xmit(skb, dest, true);
+                        }
                     }
+                }else{
+                    bool send = false;
+                    list_for_each_entry (dest, &viper->pc_list, pc_list) {
+                        if (ether_addr_equal(dst_addr, dest->ndev->dev_addr)) {
+                            pr_info("viper: %s tx packet to %s\n", vif->ndev->name, dest->ndev->name);
+                            //viper_xmit(skb, dest, true);
+                            send = true;
+                            break;
+                        }
+                    }
+                    if(!send){
+                        /* Drop it */
+                        pr_info("viper: %s drop packet\n", vif->ndev->name);
+                        kfree_skb(skb);
+                    }
+
                 }
-            } else {
-                /* Drop it */
-                kfree_skb(skb);
             }
         }
         return 0;
     }
     /* FIXME: Forward the packet to the correct device */
-    pr_info("viper: %s received packet:\n", vif->ndev->name);
+    pr_info("viper: %s received packet from %pM\n", vif->ndev->name, src_addr);
     skb->dev = dev;
     skb->protocol = eth_type_trans(skb, dev);
     skb->ip_summed = CHECKSUM_UNNECESSARY; /* don't check it */
@@ -235,7 +254,7 @@ static int viper_xmit(struct sk_buff *skb,
     pkt->from_port = from_port;
     list_add_tail(&pkt->rx_list, &dest->rx_list);
 
-    pr_info("viper: Transmission from %pM to %pM\n", src, dst);
+    //pr_info("viper: Transmission from %pM to %pM\n", src, dst);
     /* Directly send to rx_queue, simulate the rx interrupt */
     viper_rx(dest->ndev);
     return 0;
