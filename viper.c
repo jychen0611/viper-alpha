@@ -168,17 +168,32 @@ static int viper_rx(struct net_device *dev)
     kfree(pkt);
 
     // char *src_addr = eth_hdr(skb)->h_source;
-    // char *dst_addr = eth_hdr(skb)->h_dest;
+    char *dst_addr = eth_hdr(skb)->h_dest;
     if (vif->type == PORT) {
         if (!from_port) {
             struct timespec64 t;
             ktime_get_real_ts64(&t);
             fd_insert(eth_hdr(skb)->h_source, ndev_get_viper_if(dev)->port_id,
                       t);
-        }
+            pr_info("viper: %s forward:\n", vif->ndev->name);
+            viper_start_xmit(skb, vif->ndev);
 
-        pr_info("viper: %s forward:\n", vif->ndev->name);
-        viper_start_xmit(skb, vif->ndev);
+        } else {
+            int target_port = fd_query(dst_addr);
+            if (target_port != -1 && target_port == vif->port_id) {
+                /* Transmit to destination PC */
+                struct viper_if *dest = NULL;
+                list_for_each_entry (dest, &viper->pc_list, pc_list) {
+                    if (ether_addr_equal(dst_addr, dest->ndev->dev_addr)) {
+                        viper_xmit(skb, dest, true);
+                        break;
+                    }
+                }
+            } else {
+                /* Drop it */
+                kfree_skb(skb);
+            }
+        }
         return 0;
     }
     /* FIXME: Forward the packet to the correct device */
@@ -236,7 +251,7 @@ static netdev_tx_t viper_start_xmit(struct sk_buff *skb, struct net_device *dev)
             /* Broadcast to other ports */
             list_for_each_entry (dest, &viper->port_list, port_list) {
                 if (dest->port_id != cur->port_id) {
-                    // viper_xmit(skb, dest, true);
+                    viper_xmit(skb, dest, true);
                 }
             }
         } else {
