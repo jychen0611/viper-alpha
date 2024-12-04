@@ -187,10 +187,38 @@ static netdev_tx_t viper_start_xmit(struct sk_buff *skb, struct net_device *dev)
     // unsigned char *src_addr = eth_hdr(skb)->h_source;
     unsigned char *dst_addr = eth_hdr(skb)->h_dest;
 
-    struct viper_if *cur = ndev_get_viper_if(dev);
+    struct viper_if *pcif = ndev_get_viper_if(dev);
     struct viper_if *dest = NULL;
 
+    if (is_broadcast_ether_addr(dst_addr)) {
+        /* Broadcast to PC */
+        list_for_each_entry (dest, &pcif->port->pc_list, pc_link) {
+            if (dest->port_id == pcif->port_id) {
+                viper_xmit(skb, dest, false);
+            }
+        }
+        /* Broadcast to port */
+        dest = pcif->port;
+        viper_xmit(skb, dest, false);
    
+    } else {
+        bool same_port = false;
+        /* Direct send packet to destnation PC */
+        list_for_each_entry (dest, &pcif->port->pc_list, pc_link) {
+            if (ether_addr_equal(dest->ndev->dev_addr, dst_addr)) {
+                viper_xmit(skb, dest, false);
+                same_port = true;
+                break;
+            }
+        }
+        /* Forward to switch */
+        if (!same_port) {
+            dest = pcif->port;
+            viper_xmit(skb, dest, false);     
+        }
+    }
+
+
     /* Don't forget to cleanup skb, as its ownership moved to xmit callback. */
     dev_kfree_skb(skb);
     // viper_rx(skb, skb->dev);
