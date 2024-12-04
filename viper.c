@@ -185,7 +185,9 @@ static int viper_rx(struct net_device *dev)
             fd_insert(eth_hdr(skb)->h_source, ndev_get_viper_if(dev)->port_id,
                       t);
 
-            int target_port = fd_query(dst_addr);
+            int target_port = -1;
+            if(!is_broadcast_ether_addr(dst_addr))
+                target_port = fd_query(dst_addr);
             if (target_port != -1) {
                 /* Forward to target Port */
                 struct viper_if *dest = NULL;
@@ -281,7 +283,7 @@ static int viper_xmit(struct sk_buff *skb,
 /* The packet transmission function (Callback for PC interface) */
 static netdev_tx_t viper_start_xmit(struct sk_buff *skb, struct net_device *dev)
 {
-    unsigned char *src_addr = eth_hdr(skb)->h_source;
+    //unsigned char *src_addr = eth_hdr(skb)->h_source;
     unsigned char *dst_addr = eth_hdr(skb)->h_dest;
     pr_info("viper: %s Start Xmit to %pM\n", dev->name, dst_addr);
 
