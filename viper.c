@@ -147,8 +147,103 @@ static int viper_rx(struct net_device *dev)
         pr_err("viper: No packet in rx_queue\n");
         return -1;
     }
+    /* Handle packet and put into socket buffer */
+    struct viper_rx_pkt *pkt =
+        list_first_entry(&vif->rx_list, struct viper_rx_pkt, rx_list);
 
-    
+    /* socket buffer will be sended to protocol stack or forwarding */
+    struct sk_buff *skb;
+    /* Put raw packet into socket buffer */
+    skb = dev_alloc_skb(pkt->datalen + 2);
+    if (!skb) {
+        pr_err(
+            "viper: Ran out of memory allocating socket buffer, packet "
+            "dropped\n");
+        list_del(&pkt->rx_list);
+        kfree(pkt);
+        return -ENOMEM;
+    }
+    memcpy(eth_hdr(skb)->h_source, pkt->src, ETH_ALEN);
+    memcpy(eth_hdr(skb)->h_dest, pkt->dst, ETH_ALEN);
+    skb_reserve(skb, 2); /* align IP address on 16B boundary */
+    memcpy(skb_put(skb, pkt->datalen), pkt->data, pkt->datalen);
+    bool from_port = pkt->from_port;
+
+    list_del(&pkt->rx_list);
+    kfree(pkt);
+
+    /* Port forwarding the packet */
+    char *src_addr = eth_hdr(skb)->h_source;
+    char *dst_addr = eth_hdr(skb)->h_dest;
+    if (vif->type == PORT) {
+        if (!from_port) {
+            struct timespec64 t;
+            ktime_get_real_ts64(&t);
+            fd_insert(eth_hdr(skb)->h_source, ndev_get_viper_if(dev)->port_id,
+                      t);
+            pr_info("viper: %s forward packet\n", vif->ndev->name);
+
+            int target_port = fd_query(dst_addr);
+            if (target_port != -1) {
+                /* Forward to target Port */
+                struct viper_if *dest = NULL;
+                list_for_each_entry(dest, &viper->port_list, port_list){
+                    if(dest->port_id == target_port){
+                        viper_xmit(skb, dest, true);
+                        break;
+                    }
+                }
+            } else {
+                /* Broadcast to other Ports */
+                struct viper_if *dest = NULL;
+                list_for_each_entry(dest, &viper->port_list, port_list){
+                    if(dest->port_id != vif->port_id)
+                        viper_xmit(skb, dest, true);
+                }
+            }
+        } else {
+            
+            /* Transmit to destination PC */
+            struct viper_if *dest = NULL;
+            if(is_broadcast_ether_addr(dst_addr)){
+                list_for_each_entry (dest, &vif->pc_list, pc_link) {
+                    /* Broadcast to all PCs */
+                    pr_info("viper: %s tx packet to %s\n", vif->ndev->name, dest->ndev->name);
+                    viper_xmit(skb, dest, true); 
+                }
+            }else{
+                bool send = false;
+                list_for_each_entry (dest, &vif->pc_list, pc_link) {
+                    if (ether_addr_equal(dst_addr, dest->ndev->dev_addr)) {
+                        pr_info("viper: %s tx packet to %s\n", vif->ndev->name, dest->ndev->name);
+                        viper_xmit(skb, dest, true);
+                        send = true;
+                        break;
+                    }
+                }
+                if(!send){
+                    /* Drop it */
+                    pr_info("viper: %s drop packet\n", vif->ndev->name);
+                }
+
+            }
+            
+        }
+        /* Don't forget to cleanup skb */
+        kfree_skb(skb);
+        return 0;
+    }
+    /* PC receive the packet */
+    pr_info("viper: %s received packet from %pM\n", vif->ndev->name, src_addr);
+    skb->dev = dev;
+    skb->protocol = eth_type_trans(skb, dev);
+    skb->ip_summed = CHECKSUM_UNNECESSARY; /* don't check it */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)
+    return netif_rx_ni(skb);
+#else
+    return netif_rx(skb);
+#endif
 
     return 0;
     /* FIXME: free skb (kfree_skb(skb);)*/
