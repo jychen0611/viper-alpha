@@ -29,7 +29,7 @@ struct viper_content {
     /* Point to the list which contain all port interface */
     struct list_head port_list;
     /* Point to the list which contain all PC interface */
-    struct list_head pc_list;
+    //struct list_head pc_list;
     /* Point to forwarding table */
     struct list_head fd_list;
 };
@@ -51,11 +51,15 @@ struct viper_if {
         struct {
             /* Link from viper_content */
             struct list_head port_list;
+            /* Point to the PCs which belong to this port */
+            struct list_head pc_list;
         };
         /* PC interface */
         struct {
             /* Link from viper_content */
             struct list_head pc_list;
+            /* Point to the port */
+            struct viper_if *port;
         };
     };
 };
@@ -194,7 +198,7 @@ static int viper_rx(struct net_device *dev)
                     list_for_each_entry (dest, &viper->pc_list, pc_list) {
                         if (!ether_addr_equal(dst_addr, src_addr) && dest->port_id == vif->port_id) {
                             pr_info("viper: %s tx packet to %s\n", vif->ndev->name, dest->ndev->name);
-                            //viper_xmit(skb, dest, true);
+                            viper_xmit(skb, dest, true);
                         }
                     }
                 }else{
@@ -202,7 +206,7 @@ static int viper_rx(struct net_device *dev)
                     list_for_each_entry (dest, &viper->pc_list, pc_list) {
                         if (ether_addr_equal(dst_addr, dest->ndev->dev_addr)) {
                             pr_info("viper: %s tx packet to %s\n", vif->ndev->name, dest->ndev->name);
-                            //viper_xmit(skb, dest, true);
+                            viper_xmit(skb, dest, true);
                             send = true;
                             break;
                         }
@@ -404,6 +408,8 @@ static int viper_add_port(int idx)
     pif->type = PORT;
     /* Initialize rx_queue */
     INIT_LIST_HEAD(&pif->rx_list);
+    /* Initialize PC list */
+    INIT_LIST_HEAD(&pif->pc_list);
     list_add_tail(&pif->port_list, &viper->port_list);
     pr_info("viper: New PORT %d\n", pif->port_id);
     return 0;
@@ -451,15 +457,24 @@ static int viper_add_pc(int idx)
         return -ENODEV;
     }
 
-    /* Fulfill the port interface */
+    /* Fulfill the PC interface */
     struct viper_if *pcif = ndev_get_viper_if(ndev);
     pcif->ndev = ndev;
-    if (num_port != 0)
-        pcif->port_id = idx % num_port;
     pcif->type = PC;
     /* Initialize rx_queue */
     INIT_LIST_HEAD(&pcif->rx_list);
-    list_add_tail(&pcif->pc_list, &viper->pc_list);
+    /* Assign PC to the corresponding Port */
+    if (num_port != 0)
+        pcif->port_id = idx % num_port;
+    /* Add PC to the corresponding Port */
+    struct viper_if *port = NULL;
+    list_for_each_entry(port, &viper->port_list, port_list){
+        if(port->port_id == pcif->port_id){
+            pcif->port = port;
+            list_add_tail(&pcif->pc_list, &port->pc_list);
+            break;
+        }
+    }
     pr_info("viper: New PC%d which belongs to PORT%d\n", idx, pcif->port_id);
     return 0;
 }
@@ -478,11 +493,6 @@ static int __init viper_switch_init(void)
     for (int i = 0; i < num_port; ++i) {
         viper_add_port(i);
     }
-    /* Initialize the PC interface */
-    INIT_LIST_HEAD(&viper->pc_list);
-    for (int i = 0; i < num_pc; ++i) {
-        viper_add_pc(i);
-    }
     INIT_LIST_HEAD(&viper->fd_list);
 
     pr_info("viper: Virtual Ethernet switch driver loaded\n");
@@ -492,26 +502,31 @@ static int __init viper_switch_init(void)
 /* Exit viper */
 static void __exit viper_switch_exit(void)
 {
+    /* Free Port interface in switch */
     struct viper_if *pif = NULL, *safe1 = NULL;
     list_for_each_entry_safe (pif, safe1, &viper->port_list, port_list) {
+        /* Free RX queue */
         struct viper_rx_pkt *pkt = NULL, *safe = NULL;
         list_for_each_entry_safe (pkt, safe, &pif->rx_list, rx_list) {
             list_del(&pkt->rx_list);
             kfree(pkt);
         }
+        /* Free PC list in corresponding Port */
+        struct viper_if *pcif = NULL, *safe2 = NULL;
+        list_for_each_entry_safe (pcif, safe2, &pif->pc_list, pc_list) {
+            struct viper_rx_pkt *pkt = NULL, *safe = NULL;
+            list_for_each_entry_safe (pkt, safe, &pcif->rx_list, rx_list) {
+                list_del(&pkt->rx_list);
+                kfree(pkt);
+            }
+            unregister_netdev(pcif->ndev);
+            free_netdev(pcif->ndev);
+        }
+
         unregister_netdev(pif->ndev);
         free_netdev(pif->ndev);
     }
-    struct viper_if *pcif = NULL, *safe2 = NULL;
-    list_for_each_entry_safe (pcif, safe2, &viper->pc_list, pc_list) {
-        struct viper_rx_pkt *pkt = NULL, *safe = NULL;
-        list_for_each_entry_safe (pkt, safe, &pcif->rx_list, rx_list) {
-            list_del(&pkt->rx_list);
-            kfree(pkt);
-        }
-        unregister_netdev(pcif->ndev);
-        free_netdev(pcif->ndev);
-    }
+    /* Free forwarding table */
     struct forward_table *fd = NULL, *safe3 = NULL;
     list_for_each_entry_safe (fd, safe3, &viper->fd_list, fd_list) {
         pr_info("viper: | MAC %pM | PORT %d | TIME %lld.%09ld (sec) |\n",
