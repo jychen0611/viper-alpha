@@ -126,10 +126,13 @@ static inline int fd_query(char *mac)
 {
     struct forward_table *tmp = NULL;
     list_for_each_entry (tmp, &viper->fd_list, fd_list) {
-        if (ether_addr_equal(mac, tmp->mac))
+        if (ether_addr_equal(mac, tmp->mac)){
+            pr_info("viper: [HIT] %pM\n", mac);
             return tmp->port_id;
+        }
     }
     /* If doesn't find the match entry, then return -1 */
+    pr_info("viper: [MISS] %pM\n", mac);
     return -1;
 }
 
@@ -280,7 +283,7 @@ static netdev_tx_t viper_start_xmit(struct sk_buff *skb, struct net_device *dev)
 {
     unsigned char *src_addr = eth_hdr(skb)->h_source;
     unsigned char *dst_addr = eth_hdr(skb)->h_dest;
-    pr_info("viper: %s Start Xmit to %pM\n", dev->name, src_addr);
+    pr_info("viper: %s Start Xmit to %pM\n", dev->name, dst_addr);
 
     struct viper_if *pcif = ndev_get_viper_if(dev);
     struct viper_if *dest = NULL;
@@ -288,7 +291,7 @@ static netdev_tx_t viper_start_xmit(struct sk_buff *skb, struct net_device *dev)
     if (is_broadcast_ether_addr(dst_addr)) {
         /* Broadcast to PC */
         list_for_each_entry (dest, &pcif->port->pc_list, pc_link) {
-            if (dest->port_id == pcif->port_id) {
+            if (!ether_addr_equal(dest->ndev->dev_addr, pcif->ndev->dev_addr)) {
                 pr_info("viper: [Broadcast] %s --> %s\n", pcif->ndev->name, dest->ndev->name);
                 viper_xmit(skb, dest, false);
             }
