@@ -115,8 +115,10 @@ static inline void fd_insert(char *mac, int id, struct timespec64 t)
             break;
         }
     }
-    if (del)
+    if (del){
         list_del(&tmp->fd_list);
+        kfree(tmp);
+    }
     /* Add new entry to tail */
     list_add_tail(&fd->fd_list, &viper->fd_list);
 }
