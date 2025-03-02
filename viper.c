@@ -10,8 +10,8 @@
 #define PORT_NAME "viperPORT%d"
 #define PC_NAME "viperPC%d"
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Elian Chen");
+MODULE_LICENSE("Dual MIT/GPL");
+MODULE_AUTHOR("National Cheng Kung University, Taiwan");
 MODULE_DESCRIPTION("Virtual Ethernet Switch Driver");
 
 /* Customize the number of port in this switch */
