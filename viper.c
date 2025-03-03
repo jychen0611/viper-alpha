@@ -48,7 +48,7 @@ struct viper_if {
         /* Port interface */
         struct {
             /* Link from viper_content */
-            struct list_head port_list;
+            struct list_head port_link;
             /* Point to the PCs which belong to this port */
             struct list_head pc_list;
         };
@@ -85,7 +85,7 @@ struct forward_table {
     /* Time */
     struct timespec64 time;
     /* Link from viper_content */
-    struct list_head fd_list;
+    struct list_head fd_link;
 };
 
 static struct viper_content *viper = NULL;
@@ -109,25 +109,25 @@ static inline void fd_insert(char *mac, int id, struct timespec64 t)
     /* Remove duplicate enrty */
     struct forward_table *tmp = NULL;
     bool del = false;
-    list_for_each_entry (tmp, &viper->fd_list, fd_list) {
+    list_for_each_entry (tmp, &viper->fd_list, fd_link) {
         if (ether_addr_equal(fd->mac, tmp->mac)) {
             del = true;
             break;
         }
     }
     if (del){
-        list_del(&tmp->fd_list);
+        list_del(&tmp->fd_link);
         kfree(tmp);
     }
     /* Add new entry to tail */
-    list_add_tail(&fd->fd_list, &viper->fd_list);
+    list_add_tail(&fd->fd_link, &viper->fd_list);
 }
 
 /* Query Port ID from forwarding table */
 static inline int fd_query(char *mac)
 {
     struct forward_table *tmp = NULL;
-    list_for_each_entry (tmp, &viper->fd_list, fd_list) {
+    list_for_each_entry (tmp, &viper->fd_list, fd_link) {
         if (ether_addr_equal(mac, tmp->mac)){
             pr_info("viper: [HIT] %pM\n", mac);
             return tmp->port_id;
@@ -193,7 +193,7 @@ static int viper_rx(struct net_device *dev)
             if (target_port != -1) {
                 /* Forward to target Port */
                 struct viper_if *dest = NULL;
-                list_for_each_entry(dest, &viper->port_list, port_list){
+                list_for_each_entry(dest, &viper->port_list, port_link){
                     if(dest->port_id == target_port){
                         pr_info("viper: [Forwarding] %s --> %s\n", vif->ndev->name, dest->ndev->name);
                         viper_xmit(skb, dest, true);
@@ -203,7 +203,7 @@ static int viper_rx(struct net_device *dev)
             } else {
                 /* Broadcast to other Ports */
                 struct viper_if *dest = NULL;
-                list_for_each_entry(dest, &viper->port_list, port_list){
+                list_for_each_entry(dest, &viper->port_list, port_link){
                     if(dest->port_id != vif->port_id){
                         pr_info("viper: [Forwarding] %s --> %s\n", vif->ndev->name, dest->ndev->name);
                         viper_xmit(skb, dest, true);
@@ -391,7 +391,7 @@ static int viper_add_port(int idx)
     INIT_LIST_HEAD(&pif->rx_list);
     /* Initialize PC list */
     INIT_LIST_HEAD(&pif->pc_list);
-    list_add_tail(&pif->port_list, &viper->port_list);
+    list_add_tail(&pif->port_link, &viper->port_list);
     pr_info("viper: New PORT %d\n", pif->port_id);
     return 0;
 }
@@ -449,7 +449,7 @@ static int viper_add_pc(int idx)
         pcif->port_id = idx % num_port;
     /* Add PC to the corresponding Port */
     struct viper_if *port = NULL;
-    list_for_each_entry(port, &viper->port_list, port_list){
+    list_for_each_entry(port, &viper->port_list, port_link){
         if(port->port_id == pcif->port_id){
             pcif->port = port;
             list_add_tail(&pcif->pc_link, &port->pc_list);
@@ -488,7 +488,7 @@ static void __exit viper_switch_exit(void)
 {
     /* Free Port interface in switch */
     struct viper_if *pif = NULL, *safe1 = NULL;
-    list_for_each_entry_safe (pif, safe1, &viper->port_list, port_list) {
+    list_for_each_entry_safe (pif, safe1, &viper->port_list, port_link) {
         /* Free RX queue */
         struct viper_rx_pkt *pkt = NULL, *safe = NULL;
         list_for_each_entry_safe (pkt, safe, &pif->rx_list, rx_list) {
@@ -512,7 +512,7 @@ static void __exit viper_switch_exit(void)
     }
     /* Free forwarding table */
     struct forward_table *fd = NULL, *safe3 = NULL;
-    list_for_each_entry_safe (fd, safe3, &viper->fd_list, fd_list) {
+    list_for_each_entry_safe (fd, safe3, &viper->fd_list, fd_link) {
         pr_info("viper: | MAC %pM | PORT %d | TIME %lld.%09ld (sec) |\n",
                 fd->mac, fd->port_id, (s64) fd->time.tv_sec, fd->time.tv_nsec);
         kfree(fd);
