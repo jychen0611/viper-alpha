@@ -18,7 +18,7 @@ MODULE_DESCRIPTION("Virtual Ethernet Switch Driver");
 static int num_port = 2;
 module_param(num_port, int, 0444);
 MODULE_PARM_DESC(num_port, "Number of port in this virtual switch.");
-u32 port_id = 0;
+
 /* Customize the number of PC */
 static int num_pc = 2;
 module_param(num_pc, int, 0444);
@@ -385,7 +385,7 @@ static int viper_add_port(int idx)
     /* Fulfill the port interface */
     struct viper_if *pif = ndev_get_viper_if(ndev);
     pif->ndev = ndev;
-    pif->port_id = port_id++;
+    pif->port_id = idx;
     pif->type = PORT;
     /* Initialize rx_queue */
     INIT_LIST_HEAD(&pif->rx_list);
