@@ -370,7 +370,7 @@ static int viper_add_port(int idx)
     }
     /* Assign viper operations */
     ndev->netdev_ops = &viper_netdev_ops;
-    /* Close the ARP functionality */
+    /* Close the ARP functionality (for test purpose) */
     ndev->flags |= IFF_NOARP;
     /* FIXME: Support VLAN */
 
@@ -391,6 +391,7 @@ static int viper_add_port(int idx)
     INIT_LIST_HEAD(&pif->rx_list);
     /* Initialize PC list */
     INIT_LIST_HEAD(&pif->pc_list);
+    /* Add this new port interface to global port_list */
     list_add_tail(&pif->port_link, &viper->port_list);
     pr_info("viper: New PORT %d\n", pif->port_id);
     return 0;
