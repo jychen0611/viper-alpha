@@ -6,9 +6,9 @@
                 "${workspaceFolder}/**",
                 "/usr/include",
                 "/usr/local/include",
-                "/usr/src/linux-headers-6.8.0-49-generic/include",
-                "/usr/src/linux-headers-6.8.0-49-generic/arch/x86/include",
-                "/usr/src/linux-headers-6.8.0-49-generic/arch/x86/include/generated",
+                "/usr/src/linux-headers-6.8.0-52-generic/include",
+                "/usr/src/linux-headers-6.8.0-52-generic/arch/x86/include",
+                "/usr/src/linux-headers-6.8.0-52-generic/arch/x86/include/generated",
                 "/usr/lib/gcc"
             ],
             "defines": [
@@ -16,7 +16,7 @@
                 "__KERNEL__",
                 "MODULE"
             ],
-            "compilerPath": "/usr/bin/gcc-13",
+            "compilerPath": "/usr/bin/gcc",
             "cStandard": "c99",
             "cppStandard": "c++98",
             "intelliSenseMode": "linux-gcc-x64"
