@@ -74,7 +74,7 @@ struct viper_rx_pkt {
     /* Examine the source type of packet */
     bool from_port;
     /* Link from viper_if */
-    struct list_head rx_list;
+    struct list_head rx_link;
 };
 
 struct forward_table {
@@ -154,7 +154,7 @@ static int viper_rx(struct net_device *dev)
     }
     /* Handle packet and put into socket buffer */
     struct viper_rx_pkt *pkt =
-        list_first_entry(&vif->rx_list, struct viper_rx_pkt, rx_list);
+        list_first_entry(&vif->rx_list, struct viper_rx_pkt, rx_link);
 
     /* socket buffer will be sended to protocol stack or forwarding */
     struct sk_buff *skb;
@@ -164,7 +164,7 @@ static int viper_rx(struct net_device *dev)
         pr_err(
             "viper: Ran out of memory allocating socket buffer, packet "
             "dropped\n");
-        list_del(&pkt->rx_list);
+        list_del(&pkt->rx_link);
         kfree(pkt);
         return -ENOMEM;
     }
@@ -174,7 +174,7 @@ static int viper_rx(struct net_device *dev)
     memcpy(skb_put(skb, pkt->datalen), pkt->data, pkt->datalen);
     bool from_port = pkt->from_port;
 
-    list_del(&pkt->rx_list);
+    list_del(&pkt->rx_link);
     kfree(pkt);
 
     /* Port forwarding the packet */
@@ -275,7 +275,7 @@ static int viper_xmit(struct sk_buff *skb,
     memcpy(pkt->data, skb->data, skb->len);
     pkt->datalen = skb->len;
     pkt->from_port = from_port;
-    list_add_tail(&pkt->rx_list, &dest->rx_list);
+    list_add_tail(&pkt->rx_link, &dest->rx_list);
 
     /* Directly send to rx_queue, simulate the rx interrupt */
     viper_rx(dest->ndev);
@@ -474,9 +474,11 @@ static int __init viper_switch_init(void)
     for (int i = 0; i < num_port; ++i) {
         viper_add_port(i);
     }
+    /* Initialize the PC interface */
     for (int i=0;i<num_pc;++i){
         viper_add_pc(i);
     }
+    /* Initialize the forwarding table header */
     INIT_LIST_HEAD(&viper->fd_list);
 
     pr_info("viper: Virtual Ethernet switch driver loaded\n");
@@ -491,16 +493,16 @@ static void __exit viper_switch_exit(void)
     list_for_each_entry_safe (pif, safe1, &viper->port_list, port_link) {
         /* Free RX queue */
         struct viper_rx_pkt *pkt = NULL, *safe = NULL;
-        list_for_each_entry_safe (pkt, safe, &pif->rx_list, rx_list) {
-            list_del(&pkt->rx_list);
+        list_for_each_entry_safe (pkt, safe, &pif->rx_list, rx_link) {
+            list_del(&pkt->rx_link);
             kfree(pkt);
         }
         /* Free PC list in corresponding Port */
         struct viper_if *pcif = NULL, *safe2 = NULL;
         list_for_each_entry_safe (pcif, safe2, &pif->pc_list, pc_link) {
             struct viper_rx_pkt *pkt = NULL, *safe = NULL;
-            list_for_each_entry_safe (pkt, safe, &pcif->rx_list, rx_list) {
-                list_del(&pkt->rx_list);
+            list_for_each_entry_safe (pkt, safe, &pcif->rx_list, rx_link) {
+                list_del(&pkt->rx_link);
                 kfree(pkt);
             }
             unregister_netdev(pcif->ndev);
