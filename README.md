@@ -97,94 +97,125 @@ Test Passed
 $ sudo dmesg
 ```
 ```shell
-[  870.238038] viper: loading out-of-tree module taints kernel.
-[  870.238049] viper: module verification failed: signature and/or required key missing - tainting kernel
-[  870.242607] viper: New PORT 0
-[  870.242801] viper: New PORT 1
-[  870.242972] viper: New PC0 which belongs to PORT0
-[  870.243117] viper: New PC1 which belongs to PORT1
-[  870.243119] viper: Virtual Ethernet switch driver loaded
-[  870.279184] viper: viperPORT1 Ethernet device opened
-[  870.286367] viper: viperPORT0 Ethernet device opened
-[  870.294951] viper: viperPC1 Ethernet device opened
-[  870.297205] viper: viperPC0 Ethernet device opened
-[  870.308190] viper: viperPC1 Start Xmit to ff:ff:ff:ff:ff:ff
-[  870.308198] viper: [Broadcast] viperPC1 (ingress)--> viperPORT1
-[  870.308204] viper: [Forwarding] viperPORT1 --> viperPORT0
-[  870.308219] viper: [Egress] viperPORT0 --> viperPC0
-[  870.308222] viper: viperPC0 received packet from 02:ab:cd:00:00:01
-[  870.308316] viper: viperPC0 Start Xmit to ff:ff:ff:ff:ff:ff
-[  870.308319] viper: [Broadcast] viperPC0 (ingress)--> viperPORT0
-[  870.308321] viper: [Forwarding] viperPORT0 --> viperPORT1
-[  870.308323] viper: [Egress] viperPORT1 --> viperPC1
-[  870.308325] viper: viperPC1 received packet from 02:ab:cd:00:00:00
-[  870.312663] viper: viperPC0 Start Xmit to 33:33:00:00:00:16
-[  870.312670] viper: [Unicast] viperPC0 (ingress)--> viperPORT0
-[  870.312675] viper: [MISS] 33:33:00:00:00:16
-[  870.312677] viper: [Forwarding] viperPORT0 --> viperPORT1
-[  870.312680] viper: viperPORT1 drop packet
-[  870.312695] viper: viperPC1 Start Xmit to 33:33:00:00:00:16
-[  870.312696] viper: [Unicast] viperPC1 (ingress)--> viperPORT1
-[  870.312698] viper: [MISS] 33:33:00:00:00:16
-[  870.312698] viper: [Forwarding] viperPORT1 --> viperPORT0
-[  870.312700] viper: viperPORT0 drop packet
-[  870.464692] viper: viperPC0 Start Xmit to 33:33:00:00:00:16
-[  870.464703] viper: [Unicast] viperPC0 (ingress)--> viperPORT0
-[  870.464710] viper: [MISS] 33:33:00:00:00:16
-[  870.464712] viper: [Forwarding] viperPORT0 --> viperPORT1
-[  870.464717] viper: viperPORT1 drop packet
-[  870.536969] viper: viperPC1 Start Xmit to 33:33:ff:8c:85:e3
-[  870.536973] viper: [Unicast] viperPC1 (ingress)--> viperPORT1
-[  870.536976] viper: [MISS] 33:33:ff:8c:85:e3
-[  870.536977] viper: [Forwarding] viperPORT1 --> viperPORT0
-[  870.536980] viper: viperPORT0 drop packet
-[  870.861042] viper: viperPC0 Ethernet device stopped
-[  870.902814] viper: viperPC1 Ethernet device stopped
-[  870.954356] viper: viperPC0 Ethernet device opened
-[  870.957234] viper: viperPC0 Start Xmit to 33:33:00:00:00:16
-[  870.957245] viper: [Unicast] viperPC0 (ingress)--> viperPORT0
-[  870.957254] viper: [MISS] 33:33:00:00:00:16
-[  870.957257] viper: [Forwarding] viperPORT0 --> viperPORT1
-[  870.957264] viper: viperPORT1 drop packet
-[  870.974933] viper: viperPC1 Ethernet device opened
-[  870.976151] viper: viperPC0 Start Xmit to 33:33:ff:00:00:00
-[  870.976161] viper: [Unicast] viperPC0 (ingress)--> viperPORT0
-[  870.976168] viper: [MISS] 33:33:ff:00:00:00
-[  870.976171] viper: [Forwarding] viperPORT0 --> viperPORT1
-[  870.976175] viper: viperPORT1 drop packet
-[  870.978168] viper: viperPC1 Start Xmit to 33:33:00:00:00:16
-[  870.978178] viper: [Unicast] viperPC1 (ingress)--> viperPORT1
-[  870.978185] viper: [MISS] 33:33:00:00:00:16
-[  870.978187] viper: [Forwarding] viperPORT1 --> viperPORT0
-[  870.978192] viper: viperPORT0 drop packet
-[  871.020656] viper: viperPC0 Start Xmit to ff:ff:ff:ff:ff:ff
-[  871.020665] viper: [Broadcast] viperPC0 (ingress)--> viperPORT0
-[  871.020670] viper: [Forwarding] viperPORT0 --> viperPORT1
-[  871.020679] viper: [Egress] viperPORT1 --> viperPC1
-[  871.020682] viper: viperPC1 received packet from 02:ab:cd:00:00:00
-[  871.020709] viper: viperPC1 Start Xmit to 02:ab:cd:00:00:00
-[  871.020710] viper: [Unicast] viperPC1 (ingress)--> viperPORT1
-[  871.020712] viper: [HIT] 02:ab:cd:00:00:00
-[  871.020713] viper: [Forwarding] viperPORT1 --> viperPORT0
-[  871.020715] viper: [Egress] viperPORT0 --> viperPC0
-[  871.020716] viper: viperPC0 received packet from 02:ab:cd:00:00:01
-[  871.020721] viper: viperPC0 Start Xmit to 02:ab:cd:00:00:01
-[  871.020722] viper: [Unicast] viperPC0 (ingress)--> viperPORT0
-[  871.020723] viper: [HIT] 02:ab:cd:00:00:01
-[  871.020724] viper: [Forwarding] viperPORT0 --> viperPORT1
-[  871.020726] viper: [Egress] viperPORT1 --> viperPC1
-[  871.020727] viper: viperPC1 received packet from 02:ab:cd:00:00:00
-[  871.020742] viper: viperPC1 Start Xmit to 02:ab:cd:00:00:00
-[  871.020743] viper: [Unicast] viperPC1 (ingress)--> viperPORT1
-[  871.020745] viper: [HIT] 02:ab:cd:00:00:00
-[  871.020746] viper: [Forwarding] viperPORT1 --> viperPORT0
-[  871.020747] viper: [Egress] viperPORT0 --> viperPC0
-[  871.020748] viper: viperPC0 received packet from 02:ab:cd:00:00:01
-[  871.051152] viper: viperPC0 Ethernet device stopped
-[  871.060182] viper: viperPORT0 Ethernet device stopped
-[  871.080201] viper: viperPC1 Ethernet device stopped
-[  871.087123] viper: viperPORT1 Ethernet device stopped
-[  871.097673] viper: | MAC 02:ab:cd:00:00:00 | PORT 0 | TIME 1733323532.356214732 (sec) |
-[  871.097685] viper: | MAC 02:ab:cd:00:00:01 | PORT 1 | TIME 1733323532.356236282 (sec) |
-[  871.097689] viper: Virtual Ethernet switch driver unloaded
+[ 1604.668304] viper: loading out-of-tree module taints kernel.
+[ 1604.668317] viper: module verification failed: signature and/or required key missing - tainting kernel
+[ 1604.672793] viper: New PORT 0
+[ 1604.673031] viper: New PORT 1
+[ 1604.673265] viper: New PC0 which belongs to PORT0
+[ 1604.674146] viper: New PC1 which belongs to PORT1
+[ 1604.674184] viper: Virtual Ethernet switch driver loaded
+[ 1604.697581] viper: viperPORT1 Ethernet device opened
+[ 1604.702779] viper: viperPC0 Ethernet device opened
+
+/* Broadcast */
+[ 1604.709320] viper: viperPC0 Start Xmit to ff:ff:ff:ff:ff:ff
+[ 1604.709328] viper: [Broadcast] viperPC0 (ingress)--> viperPORT0
+[ 1604.709345] viper: [Forwarding] viperPORT0 --> viperPORT1
+[ 1604.709349] viper: [Egress] viperPORT1 --> viperPC1
+[ 1604.709358] viper: viperPC1 received packet from 02:ab:cd:00:00:00
+[ 1604.714905] viper: viperPC1 Ethernet device opened
+[ 1604.718744] viper: viperPORT0 Ethernet device opened
+
+/* Multicast */
+[ 1604.721533] viper: viperPC0 Start Xmit to 33:33:00:00:00:16
+[ 1604.721545] viper: [Unicast] viperPC0 (ingress)--> viperPORT0
+[ 1604.721571] viper: [MISS] 33:33:00:00:00:16
+[ 1604.721574] viper: [Forwarding] viperPORT0 --> viperPORT1
+[ 1604.721581] viper: viperPORT1 drop packet
+
+/* Broadcast */
+[ 1604.724324] viper: viperPC1 Start Xmit to ff:ff:ff:ff:ff:ff
+[ 1604.724330] viper: [Broadcast] viperPC1 (ingress)--> viperPORT1
+[ 1604.724334] viper: [Forwarding] viperPORT1 --> viperPORT0
+[ 1604.724336] viper: [Egress] viperPORT0 --> viperPC0
+[ 1604.724339] viper: viperPC0 received packet from 02:ab:cd:00:00:01
+
+/* Multicast */
+[ 1604.728293] viper: viperPC1 Start Xmit to 33:33:00:00:00:16
+[ 1604.728305] viper: [Unicast] viperPC1 (ingress)--> viperPORT1
+[ 1604.728314] viper: [MISS] 33:33:00:00:00:16
+[ 1604.728317] viper: [Forwarding] viperPORT1 --> viperPORT0
+[ 1604.728323] viper: viperPORT0 drop packet
+
+/* Multicast */
+[ 1604.878080] viper: viperPC1 Start Xmit to 33:33:00:00:00:16
+[ 1604.878102] viper: [Unicast] viperPC1 (ingress)--> viperPORT1
+[ 1604.878115] viper: [MISS] 33:33:00:00:00:16
+[ 1604.878118] viper: [Forwarding] viperPORT1 --> viperPORT0
+[ 1604.878126] viper: viperPORT0 drop packet
+
+/* Multicast */
+[ 1604.971567] viper: viperPC0 Start Xmit to 33:33:00:00:00:16
+[ 1604.971594] viper: [Unicast] viperPC0 (ingress)--> viperPORT0
+[ 1604.971605] viper: [MISS] 33:33:00:00:00:16
+[ 1604.971606] viper: [Forwarding] viperPORT0 --> viperPORT1
+[ 1604.971615] viper: viperPORT1 drop packet
+
+/* Multicast */
+[ 1605.091114] viper: viperPC0 Start Xmit to 33:33:ff:a7:a8:da
+[ 1605.091152] viper: [Unicast] viperPC0 (ingress)--> viperPORT0
+[ 1605.091230] viper: [MISS] 33:33:ff:a7:a8:da
+[ 1605.091232] viper: [Forwarding] viperPORT0 --> viperPORT1
+[ 1605.091237] viper: viperPORT1 drop packet
+
+[ 1605.292763] viper: viperPC0 Ethernet device stopped
+[ 1605.329783] viper: viperPC1 Ethernet device stopped
+[ 1605.382481] viper: viperPC0 Ethernet device opened
+
+/* Multicast */
+[ 1605.386415] viper: viperPC0 Start Xmit to 33:33:00:00:00:16
+[ 1605.386423] viper: [Unicast] viperPC0 (ingress)--> viperPORT0
+[ 1605.386440] viper: [MISS] 33:33:00:00:00:16
+[ 1605.386442] viper: [Forwarding] viperPORT0 --> viperPORT1
+[ 1605.386445] viper: viperPORT1 drop packet
+
+[ 1605.402614] viper: viperPC1 Ethernet device opened
+
+/* Multicast */
+[ 1605.406411] viper: viperPC1 Start Xmit to 33:33:00:00:00:16
+[ 1605.406417] viper: [Unicast] viperPC1 (ingress)--> viperPORT1
+[ 1605.406423] viper: [MISS] 33:33:00:00:00:16
+[ 1605.406424] viper: [Forwarding] viperPORT1 --> viperPORT0
+[ 1605.406427] viper: viperPORT0 drop packet
+
+/* ARP request */
+[ 1605.461442] viper: viperPC0 Start Xmit to ff:ff:ff:ff:ff:ff
+[ 1605.461452] viper: [Broadcast] viperPC0 (ingress)--> viperPORT0
+[ 1605.461458] viper: [Forwarding] viperPORT0 --> viperPORT1
+[ 1605.461462] viper: [Egress] viperPORT1 --> viperPC1
+[ 1605.461475] viper: viperPC1 received packet from 02:ab:cd:00:00:00
+
+/* ARP respond */
+[ 1605.461503] viper: viperPC1 Start Xmit to 02:ab:cd:00:00:00
+[ 1605.461505] viper: [Unicast] viperPC1 (ingress)--> viperPORT1
+[ 1605.461507] viper: [HIT] 02:ab:cd:00:00:00
+[ 1605.461509] viper: [Forwarding] viperPORT1 --> viperPORT0
+[ 1605.461513] viper: [Egress] viperPORT0 --> viperPC0
+[ 1605.461515] viper: viperPC0 received packet from 02:ab:cd:00:00:01
+
+/* Ping request */
+[ 1605.461522] viper: viperPC0 Start Xmit to 02:ab:cd:00:00:01
+[ 1605.461523] viper: [Unicast] viperPC0 (ingress)--> viperPORT0
+[ 1605.461526] viper: [HIT] 02:ab:cd:00:00:01
+[ 1605.461528] viper: [Forwarding] viperPORT0 --> viperPORT1
+[ 1605.461530] viper: [Egress] viperPORT1 --> viperPC1
+[ 1605.461532] viper: viperPC1 received packet from 02:ab:cd:00:00:00
+
+/* Ping respond */
+[ 1605.461550] viper: viperPC1 Start Xmit to 02:ab:cd:00:00:00
+[ 1605.461551] viper: [Unicast] viperPC1 (ingress)--> viperPORT1
+[ 1605.461553] viper: [HIT] 02:ab:cd:00:00:00
+[ 1605.461554] viper: [Forwarding] viperPORT1 --> viperPORT0
+[ 1605.461556] viper: [Egress] viperPORT0 --> viperPC0
+[ 1605.461557] viper: viperPC0 received packet from 02:ab:cd:00:00:01
+
+[ 1605.492992] viper: viperPC0 Ethernet device stopped
+[ 1605.514582] viper: viperPORT0 Ethernet device stopped
+[ 1605.527303] viper: viperPC1 Ethernet device stopped
+[ 1605.553017] viper: viperPORT1 Ethernet device stopped
+
+/* Forwarding table */
+[ 1605.570626] viper: | MAC 02:ab:cd:00:00:00 | PORT 0 | TIME 1741074076.674521206 (sec) |
+[ 1605.570644] viper: | MAC 02:ab:cd:00:00:01 | PORT 1 | TIME 1741074076.674548680 (sec) |
+[ 1605.570650] viper: Virtual Ethernet switch driver unloaded
 ```
