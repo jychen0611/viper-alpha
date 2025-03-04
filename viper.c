@@ -102,6 +102,7 @@ static int viper_rx(struct net_device *dev)
     char *dst_addr = eth_hdr(skb)->h_dest;
     if (vif->type == PORT) {
         if (!from_port) {
+            /* Update the forwarding table */
             struct timespec64 t;
             ktime_get_real_ts64(&t);
             fd_insert(eth_hdr(skb)->h_source, ndev_get_viper_if(dev)->port_id,
@@ -229,6 +230,7 @@ static netdev_tx_t viper_start_xmit(struct sk_buff *skb, struct net_device *dev)
         viper_xmit(skb, dest, false);
 
     } else {
+        /* Check if src and dst in the same LAN */
         bool same_port = false;
         /* Direct send packet to destnation PC */
         list_for_each_entry (dest, &pcif->port->pc_list, pc_link) {
@@ -296,7 +298,7 @@ static int viper_add_port(int idx)
     /* Assign viper operations */
     ndev->netdev_ops = &viper_netdev_ops;
     /* Close the ARP functionality (for test purpose) */
-    ndev->flags |= IFF_NOARP;
+    // ndev->flags |= IFF_NOARP;
     /* FIXME: Support VLAN */
 
 
