@@ -297,8 +297,8 @@ static int viper_add_port(int idx)
     }
     /* Assign viper operations */
     ndev->netdev_ops = &viper_netdev_ops;
-    /* Close the ARP functionality (for test purpose) */
-    // ndev->flags |= IFF_NOARP;
+    /* Close the ARP functionality (because port doesn't need that) */
+    ndev->flags |= IFF_NOARP;
     /* FIXME: Support VLAN */
 
 
