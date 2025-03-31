@@ -2,6 +2,16 @@
 
 <img src="viper.png" width="20%"/>
 
+## Description
+
+This porject use a linux kernel module to simulate the behavior of Ethernet switch, including packet forwarding, dropping, and self-learning.
+The following diagram descripes the scope of this project.
+
+![alt text](scope.png) 
+
+There are two types of network interface defined in this module, which are PC and Port respectly.`PC` represent the Ethernet interface of the device which connected to the switch, and `Port` represent the port interface of the switch.
+
+
 ## vscode c_cpp_properties
 
 ctrl+shift+p --> c/c++ edit configuration --> c_cpp_properties.json
